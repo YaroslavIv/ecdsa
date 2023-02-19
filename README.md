@@ -1,5 +1,5 @@
 # ECDSA
 
-- [ ] Get Public Key
+- [x] Get Public Key
 - [ ] Sign
 - [ ] Verify
