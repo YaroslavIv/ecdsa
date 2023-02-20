@@ -40,3 +40,16 @@ func (p *Point) Identical(q *Point) bool {
 	}
 	return false
 }
+
+func (p *Point) PublickKey() string {
+	x := p.X.Text(16)
+	for len(x) != 64 {
+		x = "0" + x
+	}
+	y := p.Y.Text(16)
+	for len(y) != 64 {
+		y = "0" + y
+	}
+
+	return "04" + x + y
+}

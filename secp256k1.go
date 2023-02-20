@@ -1,6 +1,8 @@
 package main
 
-import "math/big"
+import (
+	"math/big"
+)
 
 func Secp256k1() *curve {
 	secp256k1 := curve{}
@@ -15,17 +17,14 @@ func Secp256k1() *curve {
 	return &secp256k1
 }
 
-func PublickKey(private_key *big.Int) string {
-	p := Secp256k1().Mul(private_key)
+func PublickKey(private_key *big.Int) *Point {
+	return Secp256k1().Mul(private_key)
+}
 
-	x := p.X.Text(16)
-	for len(x) != 64 {
-		x = "0" + x
-	}
-	y := p.Y.Text(16)
-	for len(y) != 64 {
-		y = "0" + y
-	}
+func Sign(private_key *big.Int, message string) Signatrue {
+	return Secp256k1().sign(private_key, message)
+}
 
-	return "04" + x + y
+func Verify(public_key *Point, message string, signature Signatrue) bool {
+	return Secp256k1().verify(public_key, message, signature)
 }

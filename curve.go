@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/rand"
 	"math/big"
 )
 
@@ -71,15 +72,91 @@ func (c *curve) Add(p, q *Point) *Point {
 }
 
 func (c *curve) Mul(n *big.Int) *Point {
+	return c.mul(n, Point{
+		X: c.Gx,
+		Y: c.Gy,
+	})
+}
+
+func (c *curve) mul(n *big.Int, init_point Point) *Point {
+	N := new(big.Int).Set(n)
 	out := DefaulttPoint()
-	iter := NewPoint(c.Gx, c.Gy)
-	for n.Sign() > 0 {
-		if new(big.Int).And(n, big.NewInt(1)).Sign() != 0 {
+	iter := NewPoint(init_point.X, init_point.Y)
+	for N.Sign() > 0 {
+		if new(big.Int).And(N, big.NewInt(1)).Sign() != 0 {
 			out = c.Add(out, iter)
 		}
 		iter = c.Double(iter)
-		n.Rsh(n, 1)
+		N.Rsh(N, 1)
 	}
 
 	return out
+}
+
+type Signatrue struct {
+	R *big.Int
+	S *big.Int
+}
+
+func (c *curve) sign(private_key *big.Int, message string) Signatrue {
+	mes := hash(message)
+
+	for {
+
+		k, err := rand.Int(rand.Reader, c.N)
+		if err != nil {
+			continue
+		}
+
+		// R = k*G mod n
+		point := c.Mul(k)
+		r := new(big.Int).Mod(point.X, c.N)
+
+		// S = ((mes + r * private_key) * k**(-1)) mod n
+		x1 := new(big.Int).Mul(r, private_key)
+		x2 := new(big.Int).Add(mes, x1)
+		x3 := new(big.Int).Mul(x2, inverse(k, c.N))
+		s := new(big.Int).Mod(x3, c.N)
+
+		return Signatrue{
+			R: r,
+			S: s,
+		}
+	}
+}
+
+func (c *curve) verify(public_key *Point, message string, signature Signatrue) bool {
+	mes := hash(message)
+
+	r := signature.R
+	s := signature.S
+
+	// S = (mes + r * private_key) * k**(-1)
+	// k = (mes + r * private_key) * S**(-1)
+	// k = mes * S**(-1) + r * private_key * S**(-1)
+	// k*G = mes * S**(-1) * G + r * S**(-1) * private_key * G
+	// private_key * G = public_key
+	// R = k*G = mes * S**(-1) * G + r * S**(-1) * public_key
+	// R.x mod n == r mod n
+
+	w := inverse(s, c.N)
+
+	u1_ := new(big.Int).Mul(mes, w)
+	u1 := new(big.Int).Mod(u1_, c.N)
+
+	u2_ := new(big.Int).Mul(r, w)
+	u2 := new(big.Int).Mod(u2_, c.N)
+
+	point := c.Add(c.Mul(u1), c.mul(u2, *public_key))
+
+	x := new(big.Int).Set(point.X)
+	x_mod := new(big.Int).Mod(x, c.N)
+
+	r_mod := new(big.Int).Mod(r, c.N)
+
+	if x_mod.Cmp(r_mod) == 0 {
+		return true
+	}
+
+	return false
 }
