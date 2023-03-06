@@ -1,6 +1,11 @@
 package main
 
-import "math/big"
+import (
+	"encoding/hex"
+	"math/big"
+
+	"github.com/wealdtech/go-merkletree/keccak256"
+)
 
 type Point struct {
 	X *big.Int
@@ -52,4 +57,11 @@ func (p *Point) PublickKey() string {
 	}
 
 	return "04" + x + y
+}
+
+func (p *Point) Address() string {
+	data := append(p.X.Bytes()[:], p.Y.Bytes()[:]...)
+	output_byte := keccak256.New().Hash(data)
+	b := hex.EncodeToString(output_byte[12:])
+	return b
 }
